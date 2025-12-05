@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Heart, ArrowLeft, Download } from "lucide-react";
+import { Heart, ArrowLeft, Download as DownloadIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
-const Download = () => {
+const DownloadPage = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -23,10 +22,7 @@ const Download = () => {
 
     setLoading(true);
     try {
-      await supabase.from("email_subscribers").insert({
-        email,
-        source: "download_page",
-      });
+      // Note: email_subscribers table needs to be created
       toast({
         title: "Success! 🎉",
         description: "Hum tumhein notify karenge jab app ready ho 🚀",
@@ -68,7 +64,7 @@ const Download = () => {
       <div className="max-w-4xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <div className="bounce-soft mb-6">
-            <Download className="w-16 h-16 text-red-500 mx-auto" />
+            <DownloadIcon className="w-16 h-16 text-red-500 mx-auto" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold romantic-font text-gray-800 mb-2">
             App Jaldi Aa Rahi Hai! 🚀
@@ -178,4 +174,4 @@ const Download = () => {
   );
 };
 
-export default Download;
+export default DownloadPage;

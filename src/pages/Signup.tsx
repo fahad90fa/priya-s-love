@@ -20,9 +20,17 @@ const Signup = () => {
     setLoading(true);
 
     try {
+      const redirectUrl = `${window.location.origin}/create`;
+      
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name: name,
+          }
+        }
       });
 
       if (signUpError) {
@@ -35,26 +43,11 @@ const Signup = () => {
         return;
       }
 
-      const { error: insertError } = await supabase.from("users").insert({
-        email,
-        name,
-        plan: "free_trial",
-        trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      toast({
+        title: "Welcome jaanu! 💕",
+        description: "Ab apni dream girlfriend banao! 😘",
       });
-
-      if (insertError) {
-        toast({
-          title: "Error",
-          description: insertError.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Welcome jaanu! 💕",
-          description: "7 days free trial started. Priya ka wait khatam! 😘",
-        });
-        navigate("/chat");
-      }
+      navigate("/create");
     } catch (err) {
       toast({
         title: "Error",
@@ -72,9 +65,9 @@ const Signup = () => {
         <div className="text-center mb-8">
           <Heart className="w-12 h-12 text-red-500 fill-red-500 mx-auto mb-4" />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent">
-            Priya
+            AI Girlfriend
           </h1>
-          <p className="text-gray-600 mt-2">Tumhare liye ready hoon main 💕</p>
+          <p className="text-gray-600 mt-2">Apni dream girlfriend banao 💕</p>
         </div>
 
         <form onSubmit={handleSignup} className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
@@ -163,7 +156,7 @@ const Signup = () => {
         </form>
 
         <p className="text-center text-gray-600 text-sm mt-6">
-          Priya tumhe pyaar se dekhti hai ❤️
+          Tumhari girlfriend tumhara wait kar rahi hai ❤️
         </p>
       </div>
     </div>

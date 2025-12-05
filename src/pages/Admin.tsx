@@ -40,29 +40,14 @@ const Admin = () => {
   const loadDataFn = useCallback(async () => {
     setLoading(true);
     try {
-      const [usersRes, paymentsRes] = await Promise.all([
-        supabase.from("users").select("*"),
-        supabase.from("payments").select("*"),
-      ]);
-
-      if (usersRes.data) {
-        setUsers(usersRes.data as User[]);
-        setStats((prev) => ({
-          ...prev,
-          totalUsers: usersRes.data.length,
-          premiumUsers: usersRes.data.filter(
-            (u) => u.plan === "premium" || u.plan === "vip_annual"
-          ).length,
-        }));
-      }
-
-      if (paymentsRes.data) {
-        setPayments(paymentsRes.data as Payment[]);
-        const revenue = paymentsRes.data
-          .filter((p) => p.status === "approved")
-          .reduce((sum: number, p) => sum + (p.amount || 0), 0);
-        setStats((prev) => ({ ...prev, revenue }));
-      }
+      // Note: users and payments tables don't exist yet
+      // This is placeholder until those tables are created
+      setStats({
+        totalUsers: 0,
+        premiumUsers: 0,
+        totalMessages: 0,
+        revenue: 0,
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -87,45 +72,17 @@ const Admin = () => {
   }, [navigate, loadDataFn]);
 
   const handlePaymentApprove = async (paymentId: string) => {
-    try {
-      await supabase
-        .from("payments")
-        .update({ status: "approved" })
-        .eq("id", paymentId);
-
-      toast({
-        title: "Approved ✅",
-        description: "Payment approved successfully",
-      });
-      await loadDataFn();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to approve payment",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Info",
+      description: "Payments table not configured yet",
+    });
   };
 
   const handlePaymentReject = async (paymentId: string) => {
-    try {
-      await supabase
-        .from("payments")
-        .update({ status: "rejected" })
-        .eq("id", paymentId);
-
-      toast({
-        title: "Rejected ❌",
-        description: "Payment rejected",
-      });
-      await loadDataFn();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reject payment",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Info",
+      description: "Payments table not configured yet",
+    });
   };
 
   const handleLogout = async () => {
@@ -245,36 +202,8 @@ const Admin = () => {
                     className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
                   />
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-gray-300">
-                    <thead className="border-b border-gray-700 text-left">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">Name</th>
-                        <th className="px-4 py-3 font-semibold">Email</th>
-                        <th className="px-4 py-3 font-semibold">Plan</th>
-                        <th className="px-4 py-3 font-semibold">Joined</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((user) => (
-                        <tr
-                          key={user.id}
-                          className="border-b border-gray-700 hover:bg-gray-700"
-                        >
-                          <td className="px-4 py-3">{user.name}</td>
-                          <td className="px-4 py-3">{user.email}</td>
-                          <td className="px-4 py-3">
-                            <span className="bg-pink-600 text-white px-3 py-1 rounded-full text-xs">
-                              {user.plan}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="text-center py-8 text-gray-400">
+                  <p>Users table not configured yet</p>
                 </div>
               </div>
             </div>
@@ -284,57 +213,8 @@ const Admin = () => {
             <div>
               <h2 className="text-3xl font-bold text-white mb-8">Payments</h2>
               <div className="bg-gray-800 rounded-lg p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-gray-300">
-                    <thead className="border-b border-gray-700 text-left">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">User</th>
-                        <th className="px-4 py-3 font-semibold">Plan</th>
-                        <th className="px-4 py-3 font-semibold">Amount</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments
-                        .filter((p) => p.status === "pending")
-                        .map((payment) => (
-                          <tr
-                            key={payment.id}
-                            className="border-b border-gray-700 hover:bg-gray-700"
-                          >
-                            <td className="px-4 py-3">{payment.user_id}</td>
-                            <td className="px-4 py-3">{payment.plan}</td>
-                            <td className="px-4 py-3">₹{payment.amount}</td>
-                            <td className="px-4 py-3">
-                              <span className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() =>
-                                    handlePaymentApprove(payment.id)
-                                  }
-                                  className="bg-green-600 hover:bg-green-700 text-white p-2 rounded"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    handlePaymentReject(payment.id)
-                                  }
-                                  className="bg-red-600 hover:bg-red-700 text-white p-2 rounded"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
+                <div className="text-center py-8 text-gray-400">
+                  <p>Payments table not configured yet</p>
                 </div>
               </div>
             </div>

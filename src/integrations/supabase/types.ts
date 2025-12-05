@@ -35,6 +35,63 @@ export type Database = {
         }
         Relationships: []
       }
+      girlfriend_config: {
+        Row: {
+          age: number
+          created_at: string
+          custom_instructions: string | null
+          emoji_level: string
+          flirt_level: number
+          girlfriend_name: string
+          id: string
+          jealousy_level: number
+          languages: Json
+          location: string
+          personality_type: string
+          reply_length: string
+          special_traits: Json | null
+          updated_at: string
+          user_id: string
+          user_nickname: string
+        }
+        Insert: {
+          age?: number
+          created_at?: string
+          custom_instructions?: string | null
+          emoji_level?: string
+          flirt_level?: number
+          girlfriend_name?: string
+          id?: string
+          jealousy_level?: number
+          languages?: Json
+          location?: string
+          personality_type?: string
+          reply_length?: string
+          special_traits?: Json | null
+          updated_at?: string
+          user_id: string
+          user_nickname?: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          custom_instructions?: string | null
+          emoji_level?: string
+          flirt_level?: number
+          girlfriend_name?: string
+          id?: string
+          jealousy_level?: number
+          languages?: Json
+          location?: string
+          personality_type?: string
+          reply_length?: string
+          special_traits?: Json | null
+          updated_at?: string
+          user_id?: string
+          user_nickname?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

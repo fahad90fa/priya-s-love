@@ -77,18 +77,7 @@ const Subscription = () => {
     }
 
     try {
-      await supabase.from("payments").insert({
-        user_id: user.data.user.id,
-        plan: selectedPlan,
-        amount:
-          selectedPlan === "premium"
-            ? 299
-            : selectedPlan === "vip_annual"
-              ? 1999
-              : 0,
-        status: "pending",
-      });
-
+      // Note: payments table needs to be created
       setPaymentDone(true);
       toast({
         title: "Thank You! 💕",

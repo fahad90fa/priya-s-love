@@ -142,7 +142,7 @@ const ChatInput = ({ onSendMessage, disabled = false }: ChatInputProps) => {
             ref={emojiPickerRef}
             className="absolute bottom-16 left-0 z-50"
           >
-            <EmojiPicker onEmojiClick={onEmojiClick} theme="auto" />
+            <EmojiPicker onEmojiClick={onEmojiClick} />
           </div>
         )}
 

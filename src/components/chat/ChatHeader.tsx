@@ -1,12 +1,19 @@
 import priyaAvatar from "@/assets/priya-avatar.jpg";
-import { Heart, Phone, Video, MoreVertical } from "lucide-react";
+import { Heart, Phone, Video, Settings } from "lucide-react";
 
 interface ChatHeaderProps {
   isOnline?: boolean;
   isTyping?: boolean;
+  girlfriendName?: string;
+  onSettingsClick?: () => void;
 }
 
-const ChatHeader = ({ isOnline = true, isTyping = false }: ChatHeaderProps) => {
+const ChatHeader = ({ 
+  isOnline = true, 
+  isTyping = false, 
+  girlfriendName = "Priya",
+  onSettingsClick 
+}: ChatHeaderProps) => {
   return (
     <header className="sticky top-0 z-10 bg-card/80 backdrop-blur-md border-b border-border px-4 py-3">
       <div className="flex items-center justify-between max-w-3xl mx-auto">
@@ -14,7 +21,7 @@ const ChatHeader = ({ isOnline = true, isTyping = false }: ChatHeaderProps) => {
           <div className="relative">
             <img
               src={priyaAvatar}
-              alt="Priya"
+              alt={girlfriendName}
               className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/30 shadow-soft"
             />
             {isOnline && (
@@ -23,7 +30,7 @@ const ChatHeader = ({ isOnline = true, isTyping = false }: ChatHeaderProps) => {
           </div>
           <div>
             <h1 className="font-semibold text-foreground flex items-center gap-2">
-              Priya
+              {girlfriendName}
               <Heart className="w-4 h-4 text-primary fill-primary animate-heart-beat" />
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -45,8 +52,12 @@ const ChatHeader = ({ isOnline = true, isTyping = false }: ChatHeaderProps) => {
           <button className="p-2.5 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary">
             <Video className="w-5 h-5" />
           </button>
-          <button className="p-2.5 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary">
-            <MoreVertical className="w-5 h-5" />
+          <button 
+            onClick={onSettingsClick}
+            className="p-2.5 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary"
+            title="Girlfriend Settings ⚙️"
+          >
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </div>

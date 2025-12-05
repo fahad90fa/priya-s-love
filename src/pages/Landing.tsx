@@ -130,10 +130,7 @@ const Landing = () => {
     }
 
     try {
-      await supabase.from("email_subscribers").insert({
-        email: newsletterEmail,
-        source: "footer",
-      });
+      // Note: email_subscribers table needs to be created
       toast({ title: "Success! 🎉", description: "Hum tumhein notify karenge 💕" });
       setNewsletterEmail("");
       setShowNewsletterModal(false);
