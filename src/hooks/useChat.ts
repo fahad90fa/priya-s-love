@@ -1,18 +1,21 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Message } from "@/components/chat/ChatMessage";
 import { supabase } from "@/integrations/supabase/client";
+import { GirlfriendConfig } from "@/hooks/useAuth";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-handler`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 async function streamChat({
   messages,
+  config,
   onDelta,
   onDone,
   onError,
 }: {
   messages: ChatMessage[];
+  config?: GirlfriendConfig | null;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
@@ -24,7 +27,7 @@ async function streamChat({
         "Content-Type": "application/json",
         "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, config }),
     });
 
     if (!resp.ok) {
@@ -98,7 +101,7 @@ async function streamChat({
   }
 }
 
-export function useChat() {
+export function useChat(config?: GirlfriendConfig | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -123,24 +126,11 @@ export function useChat() {
       setMessages((prev) => [...prev, userMessage]);
       setIsTyping(true);
 
-      const dbData: Record<string, string> = {
+      // Save to conversations table
+      await supabase.from("conversations").insert({
         role: "user",
         content: content || messageContent,
-      };
-
-      if (audio) {
-        const arrayBuffer = await audio.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        dbData.audio_data = base64;
-      }
-
-      if (image) {
-        const arrayBuffer = await image.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        dbData.image_data = base64;
-      }
-
-      await supabase.from("conversations").insert(dbData);
+      });
 
       const chatHistory: ChatMessage[] = [
         ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -172,6 +162,7 @@ export function useChat() {
 
       await streamChat({
         messages: chatHistory,
+        config,
         onDelta: (chunk) => upsertAssistant(chunk),
         onDone: async () => {
           setIsTyping(false);
@@ -184,6 +175,7 @@ export function useChat() {
         },
         onError: (error) => {
           setIsTyping(false);
+          const gfName = config?.girlfriend_name || "Priya";
           setMessages((prev) => [
             ...prev,
             {
@@ -196,7 +188,7 @@ export function useChat() {
         },
       });
     },
-    [messages]
+    [messages, config]
   );
 
   return { messages, isTyping, sendMessage };
