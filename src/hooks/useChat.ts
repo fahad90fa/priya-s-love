@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Message } from "@/components/chat/ChatMessage";
 import { supabase } from "@/integrations/supabase/client";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-handler`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -22,7 +22,7 @@ async function streamChat({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
       body: JSON.stringify({ messages }),
     });
@@ -102,80 +102,102 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
-  const sendMessage = useCallback(async (content: string) => {
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      content,
-      role: "user",
-      timestamp: new Date(),
-    };
+  const sendMessage = useCallback(
+    async (content: string, audio?: Blob, image?: File) => {
+      let messageContent = content;
 
-    setMessages((prev) => [...prev, userMessage]);
-    setIsTyping(true);
+      if (audio) {
+        messageContent = "[Voice message received]";
+      }
+      if (image) {
+        messageContent = "[Image sent]";
+      }
 
-    // Save user message to database
-    await supabase.from("conversations").insert({
-      role: "user",
-      content,
-    });
+      const userMessage: Message = {
+        id: crypto.randomUUID(),
+        content: messageContent,
+        role: "user",
+        timestamp: new Date(),
+      };
 
-    // Prepare message history for AI
-    const chatHistory: ChatMessage[] = [
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content },
-    ];
+      setMessages((prev) => [...prev, userMessage]);
+      setIsTyping(true);
 
-    let assistantContent = "";
+      const dbData: Record<string, string> = {
+        role: "user",
+        content: content || messageContent,
+      };
 
-    const upsertAssistant = (chunk: string) => {
-      assistantContent += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantContent } : m
-          );
-        }
-        return [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            content: assistantContent,
-            role: "assistant" as const,
-            timestamp: new Date(),
-          },
-        ];
+      if (audio) {
+        const arrayBuffer = await audio.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        dbData.audio_data = base64;
+      }
+
+      if (image) {
+        const arrayBuffer = await image.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        dbData.image_data = base64;
+      }
+
+      await supabase.from("conversations").insert(dbData);
+
+      const chatHistory: ChatMessage[] = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: content || messageContent },
+      ];
+
+      let assistantContent = "";
+
+      const upsertAssistant = (chunk: string) => {
+        assistantContent += chunk;
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant") {
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: assistantContent } : m
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              content: assistantContent,
+              role: "assistant" as const,
+              timestamp: new Date(),
+            },
+          ];
+        });
+      };
+
+      await streamChat({
+        messages: chatHistory,
+        onDelta: (chunk) => upsertAssistant(chunk),
+        onDone: async () => {
+          setIsTyping(false);
+          if (assistantContent) {
+            await supabase.from("conversations").insert({
+              role: "assistant",
+              content: assistantContent,
+            });
+          }
+        },
+        onError: (error) => {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              content: `Oops jaanu 🥺 ${error}. Try again na?`,
+              role: "assistant",
+              timestamp: new Date(),
+            },
+          ]);
+        },
       });
-    };
-
-    await streamChat({
-      messages: chatHistory,
-      onDelta: (chunk) => upsertAssistant(chunk),
-      onDone: async () => {
-        setIsTyping(false);
-        // Save assistant response to database
-        if (assistantContent) {
-          await supabase.from("conversations").insert({
-            role: "assistant",
-            content: assistantContent,
-          });
-        }
-      },
-      onError: (error) => {
-        setIsTyping(false);
-        // Show error as assistant message
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            content: `Oops jaanu 🥺 ${error}. Try again na?`,
-            role: "assistant",
-            timestamp: new Date(),
-          },
-        ]);
-      },
-    });
-  }, [messages]);
+    },
+    [messages]
+  );
 
   return { messages, isTyping, sendMessage };
 }

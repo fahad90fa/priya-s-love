@@ -1,106 +1,236 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Smile, Mic, ImageIcon, Heart } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Smile, Mic, ImageIcon, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import EmojiPicker from "emoji-picker-react";
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, audio?: Blob, image?: File) => void;
   disabled?: boolean;
 }
 
 const ChatInput = ({ onSendMessage, disabled = false }: ChatInputProps) => {
   const [message, setMessage] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
+  const handleSend = () => {
+    if ((message.trim() || audioBlob) && !disabled) {
+      onSendMessage(message, audioBlob || undefined);
       setMessage("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
+      setAudioBlob(null);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const onEmojiClick = (emojiObject: { emoji: string }) => {
+    setMessage((prev) => prev + emojiObject.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      speakResponse(
+        "Recording... Main sun rahi hoon tumhari awaaz, jaanu 😘"
+      );
+    } catch (err) {
+      alert("Microphone access denied. Please allow mic permission.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      speakResponse(
+        "Abhi bhej rahi hoon tumhara voice message... pyaar se 💕"
+      );
+    }
+  };
+
+  const speakResponse = (text: string) => {
+    if ("speechSynthesis" in window) {
+      const synth = window.speechSynthesis;
+
+      const voices = synth.getVoices();
+      const voice = voices.find((v) => v.lang.includes("ur")) ||
+        voices.find((v) => v.lang.includes("hi")) ||
+        voices[0];
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.voice = voice || null;
+      utterance.rate = 0.9;
+      utterance.pitch = 1.1;
+
+      synth.speak(utterance);
+      setIsPlaying(true);
+      utterance.onend = () => setIsPlaying(false);
+    } else {
+      alert("Sorry jaanu, your browser doesn't support speech 😔");
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && !disabled) {
+      speakResponse(
+        `Aww... kya cute photo bheji hai tumne, jaanu! Abhi save kar rahi hoon apne phone mein 💖`
+      );
+      onSendMessage("Here's my photo for you 😘", undefined, file);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSend();
     }
+  };
+
+  const handleVolumeClick = () => {
+    speakResponse(
+      "Main yahan hoon tumhare liye, har pal, har saans mein... pyaar karti hoon tumse bahut 💕"
+    );
   };
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
     }
-  }, [message]);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent pt-4 pb-4 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-3xl mx-auto bg-card border border-border rounded-3xl shadow-soft overflow-hidden"
-      >
-        <div className="flex items-end gap-2 p-2">
+      <div className="max-w-3xl mx-auto bg-card border border-border rounded-3xl shadow-soft overflow-hidden relative">
+        {showEmojiPicker && (
+          <div
+            ref={emojiPickerRef}
+            className="absolute bottom-16 left-0 z-50"
+          >
+            <EmojiPicker onEmojiClick={onEmojiClick} theme="auto" />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 p-2">
           <button
             type="button"
-            className="p-2 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary flex-shrink-0"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-pink-500 flex-shrink-0"
+            title="Send Emoji"
+            disabled={disabled}
           >
             <Smile className="w-5 h-5" />
           </button>
 
-          <textarea
-            ref={textareaRef}
+          <label
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-purple-500 cursor-pointer flex-shrink-0"
+            title="Send Image"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              hidden
+              disabled={disabled}
+            />
+            <ImageIcon className="w-5 h-5" />
+          </label>
+
+          <button
+            type="button"
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-2 rounded-full transition-colors flex-shrink-0 ${
+              isRecording
+                ? "bg-red-500 text-white animate-pulse"
+                : "hover:bg-gray-100 text-gray-600"
+            }`}
+            title={isRecording ? "Stop Recording" : "Record Voice Message"}
+            disabled={disabled}
+          >
+            <Mic className="w-5 h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleVolumeClick}
+            disabled={isPlaying || disabled}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+            title="Hear Priya Speak"
+          >
+            <Volume2
+              className={`w-5 h-5 ${
+                isPlaying
+                  ? "animate-bounce text-red-500"
+                  : "text-blue-500"
+              }`}
+            />
+          </button>
+
+          <input
+            ref={inputRef}
+            type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="Type your message, jaanu... 💬"
             disabled={disabled}
-            rows={1}
             className={cn(
-              "flex-1 bg-transparent resize-none outline-none text-foreground placeholder:text-muted-foreground py-2 px-1 max-h-[120px] text-[15px]",
+              "flex-1 p-3 bg-transparent outline-none text-foreground placeholder:text-muted-foreground",
               disabled && "opacity-50 cursor-not-allowed"
             )}
           />
 
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              type="button"
-              className="p-2 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary"
-            >
-              <ImageIcon className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              className="p-2 rounded-full hover:bg-rose-soft transition-colors text-muted-foreground hover:text-primary"
-            >
-              <Mic className="w-5 h-5" />
-            </button>
-
-            <button
-              type="submit"
-              disabled={!message.trim() || disabled}
-              className={cn(
-                "p-2.5 rounded-full transition-all duration-300",
-                message.trim() && !disabled
-                  ? "gradient-romantic text-primary-foreground shadow-message hover:shadow-glow hover:scale-105"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              {message.trim() ? (
-                <Send className="w-5 h-5" />
-              ) : (
-                <Heart className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!message.trim() && !audioBlob || disabled}
+            className={cn(
+              "p-3 rounded-full transition-all duration-300 flex-shrink-0",
+              message.trim() || audioBlob
+                ? "bg-gradient-to-r from-pink-500 to-red-500 text-white hover:from-pink-600 hover:to-red-600 shadow-message"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            )}
+            title="Send Message"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
-      </form>
-
-      <p className="text-center text-xs text-muted-foreground mt-2">
-        Made with <Heart className="w-3 h-3 inline text-primary fill-primary" /> by Priya
-      </p>
+      </div>
     </div>
   );
 };
